@@ -2,11 +2,25 @@
 
 Frontend del TP05 de Desarrollo de Aplicaciones II (UADE). Consume el backend FastAPI oficial de la cátedra sin modificarlo.
 
-## Ejecutar
+## Preparación local
 
-1. Iniciar el backend/simulador oficial, que por defecto escucha en `http://localhost:8001`.
-2. En esta carpeta ejecutar `python -m http.server 5500`.
-3. Abrir `http://localhost:5500/dashboard.html`.
+El paquete oficial TP05 se guarda en `_catedra/TP05_Desarrollo_de_Aplicaciones_II` y está excluido de Git porque no forma parte de la entrega.
+
+Crear el entorno e instalar las dependencias una sola vez:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install fastapi uvicorn mujoco
+```
+
+## Ejecutar todo
+
+Desde esta carpeta, hacer doble clic en `INICIAR_PROYECTO.bat` o ejecutarlo en PowerShell:
+
+```powershell
+.\INICIAR_PROYECTO.bat
+```
+
+El lanzador abre el frontend en `http://localhost:5500`, ejecuta el lanzador oficial de la cátedra y deja el backend en `http://localhost:8001`. El lanzador oficial solicita elegir G1 o Go2.
 
 Si el backend se ejecuta en otra computadora, ingresar su dirección en **Servidor de telemetría** y presionar **Conectar**.
 
