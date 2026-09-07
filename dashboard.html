@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Dashboard web de telemetría para robots Unitree Go2 y G1." />
+    <title>Unitree | Dashboard de telemetría</title>
+    <link rel="stylesheet" href="dashboard.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="dashboard.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">UADE · Desarrollo de Aplicaciones II</p>
+        <h1>Telemetría Unitree</h1>
+        <p class="subtitle">Monitor web para robots Go2 y G1</p>
+      </div>
+
+      <div class="connection-card" aria-live="polite">
+        <span id="connectionIndicator" class="status-dot" aria-hidden="true"></span>
+        <div>
+          <span class="status-label">Estado del servidor</span>
+          <strong id="connectionStatus">Sin conexión</strong>
+        </div>
+      </div>
+    </header>
+
+    <main class="dashboard-shell">
+      <section class="toolbar" aria-label="Controles generales">
+        <div class="robot-info">
+          <span class="toolbar-label">Robot</span>
+          <strong id="robotName">Detectando…</strong>
+          <span id="robotModel" class="model-badge">—</span>
+        </div>
+        <div class="toolbar-actions">
+          <button id="captureButton" class="button button-primary" type="button" disabled>
+            Capturar muestra
+          </button>
+          <button id="exportButton" class="button" type="button" disabled>
+            Exportar CSV <span id="sampleCount" class="button-count">0</span>
+          </button>
+        </div>
+        <span id="lastUpdate" class="last-update">Última actualización: —</span>
+      </section>
+
+      <div class="dashboard-grid">
+        <section class="panel panel-motors" aria-labelledby="motorsTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Articulaciones</p>
+              <h2 id="motorsTitle">Motores</h2>
+            </div>
+            <span id="motorCount" class="panel-badge">0 motores</span>
+          </div>
+
+          <div class="table-wrapper">
+            <table id="motorsTable">
+              <thead>
+                <tr>
+                  <th scope="col">Motor</th>
+                  <th scope="col">Temperatura</th>
+                  <th scope="col">Ángulo</th>
+                  <th scope="col">Velocidad</th>
+                  <th scope="col">Torque</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="empty-row">
+                  <td colspan="5">Esperando datos del servidor…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="imuTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Orientación</p>
+              <h2 id="imuTitle">IMU</h2>
+            </div>
+          </div>
+
+          <div class="metrics-grid metrics-grid-three">
+            <article class="metric"><span>Roll</span><strong id="rollValue">—</strong><small>°</small></article>
+            <article class="metric"><span>Pitch</span><strong id="pitchValue">—</strong><small>°</small></article>
+            <article class="metric"><span>Yaw</span><strong id="yawValue">—</strong><small>°</small></article>
+          </div>
+
+          <div class="chart-placeholder">
+            <canvas id="imuChart" aria-label="Histórico de orientación IMU"></canvas>
+            <p id="chartFallback">Esperando muestras de la IMU…</p>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="bmsTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Energía</p>
+              <h2 id="bmsTitle">BMS</h2>
+            </div>
+          </div>
+
+          <div class="metrics-grid">
+            <article class="metric"><span>Carga</span><strong id="batteryCharge">—</strong><small>%</small></article>
+            <article class="metric"><span>Corriente</span><strong id="batteryCurrent">—</strong><small>mA</small></article>
+            <article class="metric"><span>Temperatura</span><strong id="batteryTemperature">—</strong><small>°C</small></article>
+          </div>
+
+          <div class="cells-section">
+            <h3>Voltajes de celda</h3>
+            <div id="cellVoltages" class="cells-placeholder">Esperando datos…</div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="forcesTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Contacto con el suelo</p>
+              <h2 id="forcesTitle">Fuerzas por pata</h2>
+            </div>
+          </div>
+
+          <div class="legs-grid">
+            <article id="legFL" class="leg-indicator"><span>FL</span><small>Delantera izquierda</small></article>
+            <article id="legFR" class="leg-indicator"><span>FR</span><small>Delantera derecha</small></article>
+            <article id="legRL" class="leg-indicator"><span>RL</span><small>Trasera izquierda</small></article>
+            <article id="legRR" class="leg-indicator"><span>RR</span><small>Trasera derecha</small></article>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <p>Actualización REST cada 500 ms · API Unitree TP05 de solo lectura</p>
+    </footer>
+  </body>
+</html>
