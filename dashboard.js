@@ -1,10 +1,10 @@
 "use strict";
 
-// Configuración prevista para las próximas etapas.
 const CONFIG = Object.freeze({
-  apiBaseUrl: "http://localhost:8001",
+  defaultApiBaseUrl: "http://localhost:8001",
   pollingIntervalMs: 500,
   historySize: 300,
+  websocketReconnectMs: 2000,
 });
 
 const state = {
@@ -14,6 +14,9 @@ const state = {
   imuChart: null,
   pollTimer: null,
   requestInProgress: false,
+  apiBaseUrl: CONFIG.defaultApiBaseUrl,
+  websocket: null,
+  reconnectTimer: null,
 };
 
 const elements = {
@@ -37,6 +40,9 @@ const elements = {
   captureButton: document.querySelector("#captureButton"),
   exportButton: document.querySelector("#exportButton"),
   sampleCount: document.querySelector("#sampleCount"),
+  connectionForm: document.querySelector("#connectionForm"),
+  apiUrl: document.querySelector("#apiUrl"),
+  transportMode: document.querySelector("#transportMode"),
 };
 
 function updateConnectionStatus(isConnected, message = "Sin conexión") {
@@ -145,16 +151,9 @@ async function fetchTelemetry() {
   if (state.requestInProgress) return;
   state.requestInProgress = true;
   try {
-    const response = await fetch(`${CONFIG.apiBaseUrl}/telemetria`, { cache: "no-store" });
+    const response = await fetch(`${state.apiBaseUrl}/telemetria`, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const telemetry = await response.json();
-    state.latestTelemetry = telemetry;
-    updateMotors(telemetry.motores || []);
-    updateImu(telemetry.imu || {});
-    updateBms(telemetry.bms || {});
-    updateLegForces(telemetry.fuerzas || {});
-    updateConnectionStatus(true, "Conectado");
-    elements.lastUpdate.textContent = `Última actualización: ${new Date().toLocaleTimeString("es-AR")}`;
+    renderTelemetry(await response.json());
   } catch (error) {
     updateConnectionStatus(false, "Servidor no disponible");
     elements.lastUpdate.textContent = `Error de conexión · ${error.message}`;
@@ -163,9 +162,22 @@ async function fetchTelemetry() {
   }
 }
 
+function renderTelemetry(telemetry) {
+  if (!telemetry || !Array.isArray(telemetry.motores) || !telemetry.imu || !telemetry.bms) {
+    throw new Error("Respuesta de telemetría inválida");
+  }
+  state.latestTelemetry = telemetry;
+  updateMotors(telemetry.motores);
+  updateImu(telemetry.imu);
+  updateBms(telemetry.bms);
+  updateLegForces(telemetry.fuerzas || {});
+  updateConnectionStatus(true, "Conectado");
+  elements.lastUpdate.textContent = `Última actualización: ${new Date().toLocaleTimeString("es-AR")}`;
+}
+
 async function fetchRobotInfo() {
   try {
-    const response = await fetch(`${CONFIG.apiBaseUrl}/info`, { cache: "no-store" });
+    const response = await fetch(`${state.apiBaseUrl}/info`, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     state.robotInfo = await response.json();
     elements.robotName.textContent = state.robotInfo.nombre;
@@ -175,6 +187,72 @@ async function fetchRobotInfo() {
     elements.robotName.textContent = "Unitree";
     elements.robotModel.textContent = "—";
   }
+}
+
+function websocketUrl() {
+  const url = new URL(state.apiBaseUrl);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = "/ws";
+  url.search = "";
+  return url.toString();
+}
+
+function stopConnections() {
+  window.clearInterval(state.pollTimer);
+  window.clearTimeout(state.reconnectTimer);
+  state.pollTimer = null;
+  state.reconnectTimer = null;
+  if (state.websocket) {
+    state.websocket.onclose = null;
+    state.websocket.close();
+    state.websocket = null;
+  }
+}
+
+function startPolling() {
+  if (state.pollTimer) return;
+  elements.transportMode.textContent = "REST";
+  fetchTelemetry();
+  state.pollTimer = window.setInterval(fetchTelemetry, CONFIG.pollingIntervalMs);
+}
+
+function connectWebSocket() {
+  window.clearInterval(state.pollTimer);
+  state.pollTimer = null;
+  elements.transportMode.textContent = "WS";
+  updateConnectionStatus(false, "Conectando…");
+  try {
+    const socket = new WebSocket(websocketUrl());
+    state.websocket = socket;
+    socket.onopen = () => updateConnectionStatus(true, "Conectado");
+    socket.onmessage = (event) => {
+      try {
+        renderTelemetry(JSON.parse(event.data));
+      } catch {
+        updateConnectionStatus(false, "Datos inválidos");
+      }
+    };
+    socket.onerror = () => socket.close();
+    socket.onclose = () => {
+      if (state.websocket !== socket) return;
+      state.websocket = null;
+      updateConnectionStatus(false, "Reconectando…");
+      startPolling();
+      state.reconnectTimer = window.setTimeout(connectWebSocket, CONFIG.websocketReconnectMs);
+    };
+  } catch {
+    startPolling();
+    state.reconnectTimer = window.setTimeout(connectWebSocket, CONFIG.websocketReconnectMs);
+  }
+}
+
+async function connectToBackend(rawUrl) {
+  stopConnections();
+  state.apiBaseUrl = rawUrl.trim().replace(/\/$/, "");
+  localStorage.setItem("telemetryApiUrl", state.apiBaseUrl);
+  state.latestTelemetry = null;
+  await fetchRobotInfo();
+  connectWebSocket();
 }
 
 function createImuChart() {
@@ -238,12 +316,16 @@ function exportCsv() {
 }
 
 async function initializeDashboard() {
+  state.apiBaseUrl = localStorage.getItem("telemetryApiUrl") || CONFIG.defaultApiBaseUrl;
+  elements.apiUrl.value = state.apiBaseUrl;
   updateConnectionStatus(false, "Conectando…");
   elements.captureButton.addEventListener("click", captureSample);
   elements.exportButton.addEventListener("click", exportCsv);
-  await fetchRobotInfo();
-  await fetchTelemetry();
-  state.pollTimer = window.setInterval(fetchTelemetry, CONFIG.pollingIntervalMs);
+  elements.connectionForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    connectToBackend(elements.apiUrl.value);
+  });
+  await connectToBackend(state.apiBaseUrl);
 }
 
 initializeDashboard();

@@ -33,6 +33,12 @@
           <strong id="robotName">Detectando…</strong>
           <span id="robotModel" class="model-badge">—</span>
         </div>
+        <form id="connectionForm" class="connection-form">
+          <label for="apiUrl">Servidor de telemetría</label>
+          <input id="apiUrl" name="apiUrl" type="url" value="http://localhost:8001" spellcheck="false" required />
+          <button class="button" type="submit">Conectar</button>
+          <span id="transportMode" class="model-badge">—</span>
+        </form>
         <div class="toolbar-actions">
           <button id="captureButton" class="button button-primary" type="button" disabled>
             Capturar muestra
